@@ -1,4 +1,4 @@
-# app.py (Streamlit + Vertex AI) — fixed: no `size=` arg on generate_images, adds robust upscaling/resizing
+# app.py (Streamlit + Vertex AI, with Gemini refinement for prompts + explicit resolution control)
 import os
 import datetime
 import json
@@ -50,104 +50,49 @@ aspect_ratio = st.selectbox(
     index=0
 )
 
-# Resolution selector (interpreted as 'longest side' target)
-resolution_choice = st.selectbox(
-    "🖼️ Target longest side (px)",
-    options=["512", "1024", "2048"],
+# Resolution selector (explicit width × height)
+resolution = st.selectbox(
+    "🖼️ Choose Resolution",
+    options=["512x512", "1024x1024", "1920x1080", "1080x1920", "2048x2048"],
     index=1
 )
-target_side = int(resolution_choice)
+target_width, target_height = map(int, resolution.split("x"))
 
 # Number of images
 num_images = st.slider("🧾 Number of images", min_value=1, max_value=4, value=1)
 
-generate_clicked = st.button("🚀 Generate Image")
-
 # ---------------- Helpers ----------------
 def safe_get_enhanced_text(resp):
-    """Try a few common fields for the text returned by the GenerativeModel."""
-    if resp is None:
-        return None
-    # direct .text
     if hasattr(resp, "text") and resp.text:
         return resp.text
-    # .generations (list) -> .text
-    if hasattr(resp, "generations") and resp.generations:
-        try:
-            gen = resp.generations[0]
-            if hasattr(gen, "text") and gen.text:
-                return gen.text
-        except Exception:
-            pass
-    # .candidates (list)
     if hasattr(resp, "candidates") and resp.candidates:
         try:
-            cand = resp.candidates[0]
-            # candidate content might be .content or .text or nested
-            if hasattr(cand, "content") and isinstance(cand.content, str):
-                return cand.content
-            if hasattr(cand, "text") and cand.text:
-                return cand.text
+            return resp.candidates[0].content.parts[0].text
         except Exception:
             pass
-    # fallback to str(resp)
     return str(resp)
 
 def get_image_bytes_from_genobj(gen_obj):
-    """Try multiple locations to extract raw image bytes from a generated-image object."""
-    if gen_obj is None:
-        return None
-
-    # if the object is already bytes
     if isinstance(gen_obj, (bytes, bytearray)):
         return bytes(gen_obj)
-
-    checks = [
-        lambda g: getattr(g, "image_bytes", None),
-        lambda g: getattr(g, "_image_bytes", None),
-        lambda g: getattr(g, "image", None) and getattr(g.image, "image_bytes", None),
-        lambda g: getattr(g, "image", None) and getattr(g.image, "_image_bytes", None),
-        lambda g: getattr(g, "image", None) and getattr(g.image, "image", None) and getattr(g.image.image, "_image_bytes", None),
-        lambda g: getattr(g, "image", None) and getattr(g.image, "image", None) and getattr(g.image.image, "image_bytes", None),
-    ]
-    for fn in checks:
-        try:
-            val = fn(gen_obj)
-            if val:
-                return bytes(val)
-        except Exception:
-            continue
-    # sometimes the object is iterable with .images
-    try:
-        if hasattr(gen_obj, "images") and gen_obj.images:
-            first = gen_obj.images[0]
-            return get_image_bytes_from_genobj(first)
-    except Exception:
-        pass
+    for attr in ["image_bytes", "_image_bytes"]:
+        if hasattr(gen_obj, attr):
+            return getattr(gen_obj, attr)
+    if hasattr(gen_obj, "image") and gen_obj.image:
+        for attr in ["image_bytes", "_image_bytes"]:
+            if hasattr(gen_obj.image, attr):
+                return getattr(gen_obj.image, attr)
     return None
 
-def resize_preserve_aspect(img_bytes, aspect_ratio_str, target_long_side):
-    """Resize (or upscale) raw image bytes to target_long_side while preserving given aspect ratio.
-       target_long_side means: the largest dimension should be target_long_side px.
-    """
+def resize_to_resolution(img_bytes, target_w, target_h):
     img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
-    ratio_w, ratio_h = map(int, aspect_ratio_str.split(":"))
-    # compute target dims with target_long_side as longest side
-    if ratio_w >= ratio_h:
-        target_w = target_long_side
-        target_h = max(1, round(target_long_side * ratio_h / ratio_w))
-    else:
-        target_h = target_long_side
-        target_w = max(1, round(target_long_side * ratio_w / ratio_h))
-    # resize with high-quality resampling
     resized = img.resize((target_w, target_h), Image.LANCZOS)
     out = io.BytesIO()
-    # Keep PNG to preserve alpha if any
     resized.save(out, format="PNG")
     return out.getvalue()
 
 # ---------------- Generation flow ----------------
-if generate_clicked:
+if st.button("🚀 Generate Image"):
     if not raw_prompt.strip():
         st.warning("Please enter a prompt!")
     else:
@@ -178,7 +123,7 @@ Enhanced image generation prompt:
                 st.error(f"⚠️ Gemini prompt refinement error: {e}")
                 st.stop()
 
-        # 2) generate images (no 'size' arg)
+        # 2) generate images
         with st.spinner("Generating image(s) with Imagen..."):
             try:
                 resp = IMAGE_MODEL.generate_images(
@@ -186,73 +131,34 @@ Enhanced image generation prompt:
                     number_of_images=num_images,
                     aspect_ratio=aspect_ratio,
                 )
-            except TypeError as e:
-                # defensive: if API signature changed, give helpful error
-                st.error(f"⚠️ Image generation call failed: {e}")
-                st.stop()
             except Exception as e:
                 st.error(f"⚠️ Image generation error: {e}")
                 st.stop()
 
-            # resp may be list-like or have .images — attempt to iterate
-            generated_raws = []  # list of bytes
+            generated_raws = []
+            # Try to extract each image
             for i in range(num_images):
                 gen_obj = None
-                # try common resp shapes
                 try:
-                    # resp could be indexable
-                    gen_obj = resp[i]
+                    gen_obj = resp.images[i]
                 except Exception:
                     try:
-                        if hasattr(resp, "images"):
-                            gen_obj = resp.images[i]
+                        gen_obj = resp[i]
                     except Exception:
-                        # try iterating
-                        try:
-                            gen_obj = list(resp)[i]
-                        except Exception:
-                            gen_obj = None
+                        pass
 
                 if gen_obj is None:
-                    st.warning(f"Could not extract image object for result #{i+1}")
                     continue
 
-                # get bytes
                 img_bytes = get_image_bytes_from_genobj(gen_obj)
-                # if user requested upscale to 2048, try model.upscale_image if available
-                if target_side >= 2048:
-                    up_success = False
-                    if hasattr(IMAGE_MODEL, "upscale_image"):
-                        try:
-                            # pass the generated-image object if the SDK wants it (per docs)
-                            up_resp = IMAGE_MODEL.upscale_image(image=gen_obj, new_size=2048)
-                            # try to extract bytes from up_resp
-                            up_bytes = get_image_bytes_from_genobj(up_resp)
-                            if up_bytes:
-                                img_bytes = up_bytes
-                                up_success = True
-                        except Exception:
-                            up_success = False
-                    if not up_success:
-                        # fallback: client-side upscale (PIL). Less high-quality, but workable.
-                        if img_bytes:
-                            try:
-                                img_bytes = resize_preserve_aspect(img_bytes, aspect_ratio, target_side)
-                            except Exception:
-                                # if resizing fails, keep original bytes
-                                pass
-                else:
-                    # downscale or adjust to target_side preserving aspect ratio:
-                    if img_bytes:
-                        try:
-                            img_bytes = resize_preserve_aspect(img_bytes, aspect_ratio, target_side)
-                        except Exception:
-                            # keep original if PIL fails
-                            pass
-
                 if not img_bytes:
-                    st.warning(f"Unable to get bytes for image #{i+1}")
                     continue
+
+                # Force resize to chosen resolution
+                try:
+                    img_bytes = resize_to_resolution(img_bytes, target_width, target_height)
+                except Exception:
+                    pass
 
                 generated_raws.append(img_bytes)
 
@@ -277,7 +183,6 @@ Enhanced image generation prompt:
                             mime="image/png",
                             key=f"dl_{filename}"
                         )
-                    # add to session history
                     st.session_state.generated_images.append({"filename": filename, "content": img_bytes})
             else:
                 st.error("❌ No images produced by the model.")
@@ -285,7 +190,7 @@ Enhanced image generation prompt:
 # ---------------- HISTORY ----------------
 if st.session_state.generated_images:
     st.subheader("📂 Past Generated Images")
-    for i, img in enumerate(reversed(st.session_state.generated_images[-20:])):  # show recent 20
+    for i, img in enumerate(reversed(st.session_state.generated_images[-20:])):  # recent 20
         with st.expander(f"{i+1}. {img['filename']}"):
             st.image(img["content"], caption=img["filename"], use_container_width=True)
             st.download_button(
