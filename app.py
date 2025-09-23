@@ -1,4 +1,4 @@
-# app.py (Streamlit + Vertex AI, Gemini refinement by Department, fixed 2048x2048 resolution)
+# app.py (Streamlit + Vertex AI, Gemini refinement by Department + Style, fixed 2048x2048 resolution)
 import os
 import datetime
 import json
@@ -34,7 +34,7 @@ TEXT_MODEL = GenerativeModel(TEXT_MODEL_NAME)
 
 # ---------------- STREAMLIT UI ----------------
 st.set_page_config(page_title="AI Image Generator", layout="wide")
-st.title("🖼️ AI Image Generator (with Gemini Prompt Refinement by Department, 2048x2048 fixed)")
+st.title("🖼️ AI Image Generator (Gemini Refinement by Department + Style, 2048x2048 fixed)")
 
 # ---------------- STATE ----------------
 if "generated_images" not in st.session_state:
@@ -46,6 +46,31 @@ department = st.selectbox(
     options=["Marketing", "Design", "General"],
     index=2  # ✅ General is default
 )
+
+STYLE_DESCRIPTIONS = {
+    "None": "No specific style bias, just follow the user’s intent.",
+    "Smart": "Balanced, clean, and visually appealing. Looks polished but neutral.",
+    "Cinematic Concept": "Epic, dramatic, and visually rich like a concept art frame from a movie.",
+    "Creative": "Playful, imaginative, and unique. Encourages unusual artistic elements.",
+    "Bokeh": "Soft background blur with sharp subject focus, like a DSLR photo.",
+    "Macro": "Extreme close-up, highly detailed textures, shallow depth of field.",
+    "Illustration": "Hand-drawn or digital illustration look, clear outlines and stylized shading.",
+    "3D Render": "Photorealistic or stylized CGI render, with depth and reflections.",
+    "Cinematic": "Film-style, wide dynamic range, dramatic lighting, professional grade.",
+    "Fashion": "High-end fashion magazine look. Stylish, polished, glamorous.",
+    "Minimalist": "Simple, clean, uncluttered. Few elements, lots of whitespace.",
+    "Moody": "Dark tones, high contrast, atmospheric, emotional mood.",
+    "Portrait": "Focus on the subject, natural depth, close-up or waist-up framing.",
+    "Sketch - Color": "Hand-drawn style with colored pencils or ink.",
+    "Stock Photo": "Professional commercial photo style, neutral, business-friendly.",
+    "Ray Traced": "Realistic CGI look with ray-traced lighting and reflections.",
+    "Vibrant": "Bright, saturated, bold colors. Energetic and eye-catching.",
+    "Sketch - Black & White": "Hand-drawn monochrome pencil or ink sketch.",
+    "Pop Art": "Comic-book style with bold outlines, halftone dots, vivid pop colors.",
+    "Vector": "Flat, clean vector graphics with smooth lines and solid colors."
+}
+
+style = st.selectbox("🎨 Choose Style", options=list(STYLE_DESCRIPTIONS.keys()), index=0)
 
 raw_prompt = st.text_area("✨ Enter your prompt to generate an image:", height=120)
 
@@ -146,14 +171,16 @@ if st.button("🚀 Generate Image"):
         with st.spinner("Refining prompt with Gemini..."):
             try:
                 refinement_prompt = PROMPT_TEMPLATES[department].replace("{USER_PROMPT}", raw_prompt)
+                if style != "None":
+                    refinement_prompt += f"\n\nApply the visual style: {STYLE_DESCRIPTIONS[style]}"
                 text_resp = TEXT_MODEL.generate_content(refinement_prompt)
                 enhanced_prompt = safe_get_enhanced_text(text_resp).strip()
-                st.info(f"🔮 Enhanced Prompt ({department} mode):\n\n{enhanced_prompt}")
+                st.info(f"🔮 Enhanced Prompt ({department} / {style}):\n\n{enhanced_prompt}")
             except Exception as e:
                 st.error(f"⚠️ Gemini prompt refinement error: {e}")
                 st.stop()
 
-        # 2) generate images (Imagen will return square, we force 2048x2048)
+        # 2) generate images
         with st.spinner("Generating image(s) with Imagen..."):
             try:
                 resp = IMAGE_MODEL.generate_images(
@@ -195,7 +222,7 @@ if st.button("🚀 Generate Image"):
                 cols = st.columns(len(generated_raws))
                 for idx, img_bytes in enumerate(generated_raws):
                     col = cols[idx]
-                    filename = f"{department.lower()}_image_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{idx}_2048.png"
+                    filename = f"{department.lower()}_{style.lower()}_image_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{idx}_2048.png"
                     output_dir = os.path.join(os.path.dirname(__file__), "generated_images")
                     os.makedirs(output_dir, exist_ok=True)
                     filepath = os.path.join(output_dir, filename)
