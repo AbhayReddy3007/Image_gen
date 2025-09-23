@@ -48,27 +48,28 @@ department = st.selectbox(
 )
 
 STYLE_DESCRIPTIONS = {
-    "None": "No specific style bias, just follow the user’s intent.",
-    "Smart": "Balanced, clean, and visually appealing. Looks polished but neutral.",
-    "Cinematic Concept": "Epic, dramatic, and visually rich like a concept art frame from a movie.",
-    "Creative": "Playful, imaginative, and unique. Encourages unusual artistic elements.",
-    "Bokeh": "Soft background blur with sharp subject focus, like a DSLR photo.",
-    "Macro": "Extreme close-up, highly detailed textures, shallow depth of field.",
-    "Illustration": "Hand-drawn or digital illustration look, clear outlines and stylized shading.",
-    "3D Render": "Photorealistic or stylized CGI render, with depth and reflections.",
-    "Cinematic": "Film-style, wide dynamic range, dramatic lighting, professional grade.",
-    "Fashion": "High-end fashion magazine look. Stylish, polished, glamorous.",
-    "Minimalist": "Simple, clean, uncluttered. Few elements, lots of whitespace.",
-    "Moody": "Dark tones, high contrast, atmospheric, emotional mood.",
-    "Portrait": "Focus on the subject, natural depth, close-up or waist-up framing.",
-    "Sketch - Color": "Hand-drawn style with colored pencils or ink.",
-    "Stock Photo": "Professional commercial photo style, neutral, business-friendly.",
-    "Ray Traced": "Realistic CGI look with ray-traced lighting and reflections.",
-    "Vibrant": "Bright, saturated, bold colors. Energetic and eye-catching.",
-    "Sketch - Black & White": "Hand-drawn monochrome pencil or ink sketch.",
-    "Pop Art": "Comic-book style with bold outlines, halftone dots, vivid pop colors.",
-    "Vector": "Flat, clean vector graphics with smooth lines and solid colors."
+    "None": "No special styling — keep the image natural, faithful to the user’s idea.",
+    "Smart": "A clean, balanced, and polished look. Professional yet neutral, visually appealing without strong artistic bias.",
+    "Cinematic Concept": "Epic and dramatic like a movie concept frame. Wide cinematic perspective, moody atmosphere, detailed world-building.",
+    "Creative": "Playful, imaginative, and experimental. Bold artistic choices, unexpected elements, and expressive color use.",
+    "Bokeh": "Photography style with shallow depth of field. Subject in sharp focus with soft, dreamy, blurred backgrounds.",
+    "Macro": "Extreme close-up photography. High detail, textures visible, shallow focus highlighting minute features.",
+    "Illustration": "Hand-drawn or digitally illustrated style. Clear outlines, stylized shading, expressive and artistic.",
+    "3D Render": "Photorealistic or stylized CGI. Crisp geometry, depth, shadows, and reflective surfaces with realistic rendering.",
+    "Cinematic": "Film-style composition with professional lighting. Wide dynamic range, dramatic highlights, storytelling feel.",
+    "Fashion": "High-end editorial photography. Stylish, glamorous poses, bold makeup, controlled lighting, and modern aesthetic.",
+    "Minimalist": "Simple and uncluttered. Few elements, large negative space, flat or muted color palette, clean composition.",
+    "Moody": "Dark, atmospheric, and emotional. Strong shadows, high contrast, deep tones, cinematic ambiance.",
+    "Portrait": "Focus on the subject. Natural skin tones, shallow depth of field, close-up or waist-up framing, studio or natural lighting.",
+    "Sketch - Color": "Colored pencil or ink sketch. Visible strokes, hand-drawn imperfections, vibrant but artistic look.",
+    "Stock Photo": "Professional, commercial-quality photo. Neutral subject matter, polished composition, business-friendly aesthetic.",
+    "Ray Traced": "CGI realism with ray-traced reflections, shadows, and refractions. Polished, highly realistic rendering.",
+    "Vibrant": "Bold, saturated colors. High contrast, energetic mood, eye-catching and lively presentation.",
+    "Sketch - Black & White": "Hand-drawn monochrome sketch with pencil or ink. Strong lines, shading for depth, artistic rawness.",
+    "Pop Art": "Comic-book and pop-art inspired. Bold outlines, halftone patterns, flat vivid colors, high contrast, playful tone.",
+    "Vector": "Flat vector graphics. Smooth shapes, sharp edges, solid fills, and clean scalable style like logos or icons."
 }
+
 
 style = st.selectbox("🎨 Choose Style", options=list(STYLE_DESCRIPTIONS.keys()), index=0)
 
