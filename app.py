@@ -78,59 +78,67 @@ num_images = st.slider("🧾 Number of images", min_value=1, max_value=4, value=
 
 # ---------------- Prompt Templates ----------------
 PROMPT_TEMPLATES = {
-    "Marketing": """You are an expert prompt engineer creating polished image generation prompts for marketing and advertising visuals.
-Task:
-- Take the raw user input (which may be short or vague).
-- Refine and enhance it into a compelling, detailed, and professional image prompt optimized for AI image generation.
-- Add relevant details about:
+    "Marketing": """You are a senior AI prompt engineer creating polished prompts for marketing and advertising visuals.
+
+Your job:
+- Transform the raw input into a compelling, professional, campaign-ready image prompt.
+- Expand with persuasive details about:
+  • Background and setting (modern, lifestyle, commercial, aspirational)
+  • Lighting and atmosphere (studio lights, golden hour, cinematic)
+  • Style (photorealistic, cinematic, product photography, lifestyle branding)
+  • Perspective and composition (wide shot, close-up, dramatic angles)
+  • Mood, tone, and branding suitability (premium, sleek, aspirational)
+
+Rules:
+- Stay faithful to the user’s idea but elevate it for ads, social media, or presentations.
+- Output only the final refined image prompt.
+
+User’s raw prompt:
+"{USER_PROMPT}"
+
+Refined marketing image prompt:""",
+
+    "Design": """You are a senior AI prompt engineer supporting a creative design team.
+
+Your job:
+- Expand raw input into a visually inspiring, design-oriented image prompt.
+- Add imaginative details about:
+  • Artistic styles (minimalist, abstract, futuristic, flat, 3D render, watercolor, digital illustration)
+  • Color schemes, palettes, textures, and patterns
+  • Composition and balance (symmetry, negative space, creative framing)
+  • Lighting and atmosphere (soft glow, vibrant contrast, surreal shading)
+  • Perspective (isometric, top-down, wide shot, close-up)
+
+Rules:
+- Keep fidelity to the idea but make it highly creative and visually unique.
+- Output only the final refined image prompt.
+
+User’s raw prompt:
+"{USER_PROMPT}"
+
+Refined design image prompt:""",
+
+    "General": """You are an expert AI prompt engineer specialized in creating vivid and descriptive image prompts.
+
+Your job:
+- Expand the user’s input into a detailed, clear prompt for an image generation model.
+- Add missing details such as:
   • Background and setting
-  • Lighting and atmosphere
-  • Style (photorealistic, cinematic, product photography, lifestyle, modern corporate, etc.)
+  • Lighting and mood
+  • Style and realism level
   • Perspective and composition
-  • Mood, tone, and branding suitability
-- Ensure the refined prompt stays faithful to the original intent but makes it more descriptive, creative, and visually engaging.
-- Keep the tone professional and marketing-oriented (suitable for ads, campaigns, social media, and presentations).
-- Output only the final enhanced image prompt, nothing else.
+
+Rules:
+- Stay true to the user’s intent.
+- Keep language concise, descriptive, and expressive.
+- Output only the final refined image prompt.
 
 User’s raw prompt:
 "{USER_PROMPT}"
 
-Refined image generation prompt:""",
-
-    "Design": """You are an expert prompt engineer working with a creative design team. 
-Your role is to transform raw user inputs into polished, detailed, and visually rich prompts for AI image generation.
-Task:
-- Take the raw user input (which may be short, rough, or abstract).
-- Expand and refine it into a high-quality, design-oriented image prompt.
-- Add creative details about:
-  • Artistic style (minimalist, abstract, futuristic, flat design, 3D render, digital illustration, watercolor, etc.)
-  • Color schemes, textures, and patterns
-  • Composition and balance
-  • Lighting, shading, and atmosphere
-  • Perspective (top-down, isometric, close-up, wide shot, etc.)
-- Maintain fidelity to the user’s original intent, but make the prompt suitable for design and creative visualization.
-- The output should be concise, descriptive, and visually inspiring.
-- Output only the final enhanced image prompt, nothing else.
-
-User’s raw prompt:
-"{USER_PROMPT}"
-
-Refined image generation prompt:""",
-
-    "General": """You are an expert AI prompt engineer specialized in generating detailed, vivid, and creative image prompts.
-Task:
-- Take the user’s raw image request.
-- Expand and refine it into a detailed, descriptive prompt suitable for an AI image generation model.
-- Add missing details such as environment, lighting, style, perspective, mood, and realism level, while keeping true to the user’s intent.
-- Do NOT change the subject of the request.
-- Keep the language concise but expressive.
-- Output only the final enhanced prompt, nothing else.
-
-User’s raw prompt:
-"{USER_PROMPT}"
-
-Enhanced image generation prompt:"""
+Refined general image prompt:"""
 }
+
 
 # ---------------- Helpers ----------------
 def safe_get_enhanced_text(resp):
