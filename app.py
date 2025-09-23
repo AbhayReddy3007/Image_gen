@@ -1,4 +1,4 @@
-# app.py (Streamlit + Vertex AI, Gemini refinement by Department + Resolution Control, no aspect ratio)
+# app.py (Streamlit + Vertex AI, Gemini refinement by Department, fixed 2048x2048 resolution)
 import os
 import datetime
 import json
@@ -34,7 +34,7 @@ TEXT_MODEL = GenerativeModel(TEXT_MODEL_NAME)
 
 # ---------------- STREAMLIT UI ----------------
 st.set_page_config(page_title="AI Image Generator", layout="wide")
-st.title("🖼️ AI Image Generator (with Gemini Prompt Refinement by Department)")
+st.title("🖼️ AI Image Generator (with Gemini Prompt Refinement by Department, 2048x2048 fixed)")
 
 # ---------------- STATE ----------------
 if "generated_images" not in st.session_state:
@@ -49,21 +49,11 @@ department = st.selectbox(
 
 raw_prompt = st.text_area("✨ Enter your prompt to generate an image:", height=120)
 
-# Resolution selector (explicit width × height)
-resolution = st.selectbox(
-    "🖼️ Choose Resolution",
-    options=["512x512", "1024x1024", "1920x1080", "1080x1920", "2048x2048"],
-    index=1
-)
-target_width, target_height = map(int, resolution.split("x"))
-
 num_images = st.slider("🧾 Number of images", min_value=1, max_value=4, value=1)
 
 # ---------------- Prompt Templates ----------------
 PROMPT_TEMPLATES = {
-    "Marketing": """
-You are an expert prompt engineer creating polished image generation prompts for marketing and advertising visuals.
-
+    "Marketing": """You are an expert prompt engineer creating polished image generation prompts for marketing and advertising visuals.
 Task:
 - Take the raw user input (which may be short or vague).
 - Refine and enhance it into a compelling, detailed, and professional image prompt optimized for AI image generation.
@@ -80,13 +70,10 @@ Task:
 User’s raw prompt:
 "{USER_PROMPT}"
 
-Refined image generation prompt:
-""",
+Refined image generation prompt:""",
 
-    "Design": """
-You are an expert prompt engineer working with a creative design team. 
+    "Design": """You are an expert prompt engineer working with a creative design team. 
 Your role is to transform raw user inputs into polished, detailed, and visually rich prompts for AI image generation.
-
 Task:
 - Take the raw user input (which may be short, rough, or abstract).
 - Expand and refine it into a high-quality, design-oriented image prompt.
@@ -103,12 +90,9 @@ Task:
 User’s raw prompt:
 "{USER_PROMPT}"
 
-Refined image generation prompt:
-""",
+Refined image generation prompt:""",
 
-    "General": """
-You are an expert AI prompt engineer specialized in generating detailed, vivid, and creative image prompts.
-
+    "General": """You are an expert AI prompt engineer specialized in generating detailed, vivid, and creative image prompts.
 Task:
 - Take the user’s raw image request.
 - Expand and refine it into a detailed, descriptive prompt suitable for an AI image generation model.
@@ -120,8 +104,7 @@ Task:
 User’s raw prompt:
 "{USER_PROMPT}"
 
-Enhanced image generation prompt:
-"""
+Enhanced image generation prompt:"""
 }
 
 # ---------------- Helpers ----------------
@@ -147,9 +130,9 @@ def get_image_bytes_from_genobj(gen_obj):
                 return getattr(gen_obj.image, attr)
     return None
 
-def resize_to_resolution(img_bytes, target_w, target_h):
+def resize_to_2048(img_bytes):
     img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
-    resized = img.resize((target_w, target_h), Image.LANCZOS)
+    resized = img.resize((2048, 2048), Image.LANCZOS)
     out = io.BytesIO()
     resized.save(out, format="PNG")
     return out.getvalue()
@@ -170,7 +153,7 @@ if st.button("🚀 Generate Image"):
                 st.error(f"⚠️ Gemini prompt refinement error: {e}")
                 st.stop()
 
-        # 2) generate images (no aspect_ratio anymore)
+        # 2) generate images (Imagen will return square, we force 2048x2048)
         with st.spinner("Generating image(s) with Imagen..."):
             try:
                 resp = IMAGE_MODEL.generate_images(
@@ -199,9 +182,9 @@ if st.button("🚀 Generate Image"):
                 if not img_bytes:
                     continue
 
-                # Resize to chosen resolution
+                # Force resize to 2048x2048
                 try:
-                    img_bytes = resize_to_resolution(img_bytes, target_width, target_height)
+                    img_bytes = resize_to_2048(img_bytes)
                 except Exception:
                     pass
 
@@ -212,7 +195,7 @@ if st.button("🚀 Generate Image"):
                 cols = st.columns(len(generated_raws))
                 for idx, img_bytes in enumerate(generated_raws):
                     col = cols[idx]
-                    filename = f"{department.lower()}_image_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{idx}.png"
+                    filename = f"{department.lower()}_image_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{idx}_2048.png"
                     output_dir = os.path.join(os.path.dirname(__file__), "generated_images")
                     os.makedirs(output_dir, exist_ok=True)
                     filepath = os.path.join(output_dir, filename)
