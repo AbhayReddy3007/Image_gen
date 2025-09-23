@@ -1,4 +1,4 @@
-# app.py (Streamlit + Vertex AI, with Gemini refinement for prompts + explicit resolution control)
+# app.py (Streamlit + Vertex AI, with Gemini refinement by Department + Resolution Control)
 import os
 import datetime
 import json
@@ -34,23 +34,27 @@ TEXT_MODEL = GenerativeModel(TEXT_MODEL_NAME)
 
 # ---------------- STREAMLIT UI ----------------
 st.set_page_config(page_title="AI Image Generator", layout="wide")
-st.title("🖼️ AI Image Generator ")
+st.title("🖼️ AI Image Generator (with Gemini Prompt Refinement by Department)")
 
 # ---------------- STATE ----------------
 if "generated_images" not in st.session_state:
     st.session_state.generated_images = []
 
 # ---------------- UI ----------------
+department = st.selectbox(
+    "🏢 Select Department",
+    options=["Marketing", "Design", "General"],
+    index=2  # ✅ General is default
+)
+
 raw_prompt = st.text_area("✨ Enter your prompt to generate an image:", height=120)
 
-# Aspect ratio selector
 aspect_ratio = st.selectbox(
     "📐 Choose Aspect Ratio",
     options=["1:1", "16:9", "9:16", "4:3", "3:2"],
     index=0
 )
 
-# Resolution selector (explicit width × height)
 resolution = st.selectbox(
     "🖼️ Choose Resolution",
     options=["512x512", "1024x1024", "1920x1080", "1080x1920", "2048x2048"],
@@ -58,8 +62,72 @@ resolution = st.selectbox(
 )
 target_width, target_height = map(int, resolution.split("x"))
 
-# Number of images
 num_images = st.slider("🧾 Number of images", min_value=1, max_value=4, value=1)
+
+# ---------------- Prompt Templates ----------------
+PROMPT_TEMPLATES = {
+    "Marketing": """
+You are an expert prompt engineer creating polished image generation prompts for marketing and advertising visuals.
+
+Task:
+- Take the raw user input (which may be short or vague).
+- Refine and enhance it into a compelling, detailed, and professional image prompt optimized for AI image generation.
+- Add relevant details about:
+  • Background and setting
+  • Lighting and atmosphere
+  • Style (photorealistic, cinematic, product photography, lifestyle, modern corporate, etc.)
+  • Perspective and composition
+  • Mood, tone, and branding suitability
+- Ensure the refined prompt stays faithful to the original intent but makes it more descriptive, creative, and visually engaging.
+- Keep the tone professional and marketing-oriented (suitable for ads, campaigns, social media, and presentations).
+- Output only the final enhanced image prompt, nothing else.
+
+User’s raw prompt:
+"{USER_PROMPT}"
+
+Refined image generation prompt:
+""",
+
+    "Design": """
+You are an expert prompt engineer working with a creative design team. 
+Your role is to transform raw user inputs into polished, detailed, and visually rich prompts for AI image generation.
+
+Task:
+- Take the raw user input (which may be short, rough, or abstract).
+- Expand and refine it into a high-quality, design-oriented image prompt.
+- Add creative details about:
+  • Artistic style (minimalist, abstract, futuristic, flat design, 3D render, digital illustration, watercolor, etc.)
+  • Color schemes, textures, and patterns
+  • Composition and balance
+  • Lighting, shading, and atmosphere
+  • Perspective (top-down, isometric, close-up, wide shot, etc.)
+- Maintain fidelity to the user’s original intent, but make the prompt suitable for design and creative visualization.
+- The output should be concise, descriptive, and visually inspiring.
+- Output only the final enhanced image prompt, nothing else.
+
+User’s raw prompt:
+"{USER_PROMPT}"
+
+Refined image generation prompt:
+""",
+
+    "General": """
+You are an expert AI prompt engineer specialized in generating detailed, vivid, and creative image prompts.
+
+Task:
+- Take the user’s raw image request.
+- Expand and refine it into a detailed, descriptive prompt suitable for an AI image generation model.
+- Add missing details such as environment, lighting, style, perspective, mood, and realism level, while keeping true to the user’s intent.
+- Do NOT change the subject of the request.
+- Keep the language concise but expressive.
+- Output only the final enhanced prompt, nothing else.
+
+User’s raw prompt:
+"{USER_PROMPT}"
+
+Enhanced image generation prompt:
+"""
+}
 
 # ---------------- Helpers ----------------
 def safe_get_enhanced_text(resp):
@@ -99,26 +167,10 @@ if st.button("🚀 Generate Image"):
         # 1) refine prompt with Gemini
         with st.spinner("Refining prompt with Gemini..."):
             try:
-                refinement_prompt = f"""
-You are an expert AI prompt engineer specialized in generating detailed, vivid, and creative image prompts.
-
-Task:
-- Take the user’s raw image request.
-- Expand and refine it into a detailed, descriptive prompt suitable for an AI image generation model.
-- Add missing details such as environment, lighting, style, perspective, mood, and realism level, while keeping true to the user’s intent.
-- Do NOT change the subject of the request.
-- Keep the language concise but expressive.
-- Output only the final enhanced prompt, nothing else.
-
-User’s raw prompt:
-\"{raw_prompt}\"
-
-Enhanced image generation prompt:
-"""
+                refinement_prompt = PROMPT_TEMPLATES[department].replace("{USER_PROMPT}", raw_prompt)
                 text_resp = TEXT_MODEL.generate_content(refinement_prompt)
                 enhanced_prompt = safe_get_enhanced_text(text_resp).strip()
-                
-
+                st.info(f"🔮 Enhanced Prompt ({department} mode):\n\n{enhanced_prompt}")
             except Exception as e:
                 st.error(f"⚠️ Gemini prompt refinement error: {e}")
                 st.stop()
@@ -136,7 +188,6 @@ Enhanced image generation prompt:
                 st.stop()
 
             generated_raws = []
-            # Try to extract each image
             for i in range(num_images):
                 gen_obj = None
                 try:
@@ -147,14 +198,14 @@ Enhanced image generation prompt:
                     except Exception:
                         pass
 
-                if gen_obj is None:
+                if not gen_obj:
                     continue
 
                 img_bytes = get_image_bytes_from_genobj(gen_obj)
                 if not img_bytes:
                     continue
 
-                # Force resize to chosen resolution
+                # Resize to chosen resolution
                 try:
                     img_bytes = resize_to_resolution(img_bytes, target_width, target_height)
                 except Exception:
@@ -162,7 +213,7 @@ Enhanced image generation prompt:
 
                 generated_raws.append(img_bytes)
 
-            # 3) Show images in a grid and save
+            # 3) Show images
             if generated_raws:
                 cols = st.columns(len(generated_raws))
                 for idx, img_bytes in enumerate(generated_raws):
@@ -190,7 +241,7 @@ Enhanced image generation prompt:
 # ---------------- HISTORY ----------------
 if st.session_state.generated_images:
     st.subheader("📂 Past Generated Images")
-    for i, img in enumerate(reversed(st.session_state.generated_images[-20:])):  # recent 20
+    for i, img in enumerate(reversed(st.session_state.generated_images[-20:])):  # last 20
         with st.expander(f"{i+1}. {img['filename']}"):
             st.image(img["content"], caption=img["filename"], use_container_width=True)
             st.download_button(
