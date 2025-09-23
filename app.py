@@ -1,4 +1,4 @@
-# app.py (Streamlit + Vertex AI, with Gemini refinement by Department + Resolution Control)
+# app.py (Streamlit + Vertex AI, with Gemini refinement by Department + Fixed 2048x2048 Resolution)
 import os
 import datetime
 import json
@@ -49,18 +49,15 @@ department = st.selectbox(
 
 raw_prompt = st.text_area("✨ Enter your prompt to generate an image:", height=120)
 
+# ✅ Aspect ratio selector (only supported ones)
 aspect_ratio = st.selectbox(
     "📐 Choose Aspect Ratio",
-    options=["1:1", "16:9", "9:16", "4:3", "3:2"],
+    options=["1:1", "16:9", "9:16"],
     index=0
 )
 
-resolution = st.selectbox(
-    "🖼️ Choose Resolution",
-    options=["512x512", "1024x1024", "1920x1080", "1080x1920", "2048x2048"],
-    index=1
-)
-target_width, target_height = map(int, resolution.split("x"))
+# ✅ Fixed resolution (2048x2048)
+target_width, target_height = 2048, 2048
 
 num_images = st.slider("🧾 Number of images", min_value=1, max_value=4, value=1)
 
@@ -153,6 +150,7 @@ def get_image_bytes_from_genobj(gen_obj):
     return None
 
 def resize_to_resolution(img_bytes, target_w, target_h):
+    """Force final image to exact resolution."""
     img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
     resized = img.resize((target_w, target_h), Image.LANCZOS)
     out = io.BytesIO()
@@ -205,7 +203,7 @@ if st.button("🚀 Generate Image"):
                 if not img_bytes:
                     continue
 
-                # Resize to chosen resolution
+                # ✅ Force resize to 2048x2048
                 try:
                     img_bytes = resize_to_resolution(img_bytes, target_width, target_height)
                 except Exception:
@@ -218,7 +216,7 @@ if st.button("🚀 Generate Image"):
                 cols = st.columns(len(generated_raws))
                 for idx, img_bytes in enumerate(generated_raws):
                     col = cols[idx]
-                    filename = f"image_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{idx}.png"
+                    filename = f"{department.lower()}_image_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{idx}.png"
                     output_dir = os.path.join(os.path.dirname(__file__), "generated_images")
                     os.makedirs(output_dir, exist_ok=True)
                     filepath = os.path.join(output_dir, filename)
