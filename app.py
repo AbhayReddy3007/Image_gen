@@ -117,7 +117,7 @@ Enhanced image generation prompt:
 """
                 text_resp = TEXT_MODEL.generate_content(refinement_prompt)
                 enhanced_prompt = safe_get_enhanced_text(text_resp).strip()
-                st.info(f"🔮 Enhanced Prompt:\n\n{enhanced_prompt}")
+                
 
             except Exception as e:
                 st.error(f"⚠️ Gemini prompt refinement error: {e}")
