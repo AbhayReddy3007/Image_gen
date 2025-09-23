@@ -34,7 +34,7 @@ TEXT_MODEL = GenerativeModel(TEXT_MODEL_NAME)
 
 # ---------------- STREAMLIT UI ----------------
 st.set_page_config(page_title="AI Image Generator", layout="wide")
-st.title("🖼️ AI Image Generator (Gemini Refinement by Department + Style, 2048x2048 fixed)")
+st.title("🖼️ AI Image Generator")
 
 # ---------------- STATE ----------------
 if "generated_images" not in st.session_state:
