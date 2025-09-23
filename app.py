@@ -1,4 +1,4 @@
-# app.py (Streamlit + Vertex AI, with Gemini refinement by Department + Fixed 2048x2048 Resolution)
+# app.py (Streamlit + Vertex AI, Gemini refinement by Department + Resolution Control, no aspect ratio)
 import os
 import datetime
 import json
@@ -34,7 +34,7 @@ TEXT_MODEL = GenerativeModel(TEXT_MODEL_NAME)
 
 # ---------------- STREAMLIT UI ----------------
 st.set_page_config(page_title="AI Image Generator", layout="wide")
-st.title("🖼️ AI Image Generator")
+st.title("🖼️ AI Image Generator (with Gemini Prompt Refinement by Department)")
 
 # ---------------- STATE ----------------
 if "generated_images" not in st.session_state:
@@ -49,15 +49,13 @@ department = st.selectbox(
 
 raw_prompt = st.text_area("✨ Enter your prompt to generate an image:", height=120)
 
-# ✅ Aspect ratio selector (only supported ones)
-aspect_ratio = st.selectbox(
-    "📐 Choose Aspect Ratio",
-    options=["1:1", "16:9", "9:16"],
-    index=0
+# Resolution selector (explicit width × height)
+resolution = st.selectbox(
+    "🖼️ Choose Resolution",
+    options=["512x512", "1024x1024", "1920x1080", "1080x1920", "2048x2048"],
+    index=1
 )
-
-# ✅ Fixed resolution (2048x2048)
-target_width, target_height = 2048, 2048
+target_width, target_height = map(int, resolution.split("x"))
 
 num_images = st.slider("🧾 Number of images", min_value=1, max_value=4, value=1)
 
@@ -150,7 +148,6 @@ def get_image_bytes_from_genobj(gen_obj):
     return None
 
 def resize_to_resolution(img_bytes, target_w, target_h):
-    """Force final image to exact resolution."""
     img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
     resized = img.resize((target_w, target_h), Image.LANCZOS)
     out = io.BytesIO()
@@ -173,13 +170,12 @@ if st.button("🚀 Generate Image"):
                 st.error(f"⚠️ Gemini prompt refinement error: {e}")
                 st.stop()
 
-        # 2) generate images
+        # 2) generate images (no aspect_ratio anymore)
         with st.spinner("Generating image(s) with Imagen..."):
             try:
                 resp = IMAGE_MODEL.generate_images(
                     prompt=enhanced_prompt,
                     number_of_images=num_images,
-                    aspect_ratio=aspect_ratio,
                 )
             except Exception as e:
                 st.error(f"⚠️ Image generation error: {e}")
@@ -203,7 +199,7 @@ if st.button("🚀 Generate Image"):
                 if not img_bytes:
                     continue
 
-                # ✅ Force resize to 2048x2048
+                # Resize to chosen resolution
                 try:
                     img_bytes = resize_to_resolution(img_bytes, target_width, target_height)
                 except Exception:
