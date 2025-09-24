@@ -1,4 +1,3 @@
-
 import os
 import datetime
 import json
@@ -70,8 +69,26 @@ STYLE_DESCRIPTIONS = {
     "Vector": "Flat vector graphics. Smooth shapes, sharp edges, solid fills, and clean scalable style like logos or icons."
 }
 
+# ---------------- Department-aware Style Suggestions ----------------
+DEPARTMENT_STYLE_MAP = {
+    "Marketing": ["Fashion", "Vibrant", "Stock Photo", "Cinematic", "Minimalist"],
+    "Design": ["Vector", "Creative", "Pop Art", "Illustration", "3D Render"],
+    "General": ["Smart", "Cinematic", "Portrait", "Stock Photo"],
+    "DPEX": ["Moody", "Cinematic Concept", "3D Render", "Ray Traced", "Minimalist"]
+}
 
-style = st.selectbox("🎨 Choose Style", options=list(STYLE_DESCRIPTIONS.keys()), index=0)
+def get_styles_for_department(dept):
+    base_styles = DEPARTMENT_STYLE_MAP.get(dept, [])
+    all_styles = ["None"] + base_styles + [s for s in STYLE_DESCRIPTIONS.keys() if s not in base_styles and s != "None"]
+    return all_styles
+
+styles_for_dept = get_styles_for_department(department)
+
+style = st.selectbox(
+    "🎨 Choose Style",
+    options=styles_for_dept,
+    index=0  # defaults to "None"
+)
 
 raw_prompt = st.text_area("✨ Enter your prompt to generate an image:", height=120)
 
@@ -98,7 +115,6 @@ User’s raw prompt:
 "{USER_PROMPT}"
 
 Refined marketing image prompt:""",
-
     "Design": """You are a senior AI prompt engineer supporting a creative design team.
 
 Your job:
@@ -118,7 +134,6 @@ User’s raw prompt:
 "{USER_PROMPT}"
 
 Refined design image prompt:""",
-
     "General": """You are an expert AI prompt engineer specialized in creating vivid and descriptive image prompts.
 
 Your job:
@@ -138,7 +153,6 @@ User’s raw prompt:
 "{USER_PROMPT}"
 
 Refined general image prompt:""",
-
     "DPEX": """You are a senior AI prompt engineer creating refined prompts for IT and technology-related visuals.
 
 Your job:
@@ -160,9 +174,7 @@ User’s raw prompt:
 "{USER_PROMPT}"
 
 Refined DPEX image prompt:"""
-
 }
-
 
 # ---------------- Helpers ----------------
 def safe_get_enhanced_text(resp):
