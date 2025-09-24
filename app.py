@@ -93,7 +93,7 @@ DEPARTMENT_STYLE_MAP = {
     "Marketing": ["Fashion", "Vibrant", "Stock Photo", "Cinematic", "Minimalist"],
     "Design": ["Vector", "Creative", "Pop Art", "Illustration", "3D Render"],
     "General": ["Smart", "Cinematic", "Portrait", "Stock Photo"],
-    "DPEX": ["Moody", "Cinematic Concept", "3D Render", "Ray Traced", "Minimalist"]
+    "DPEX": ["Moody", "Cinematic Concept", "3D Render", "Minimalist", "Cyberpunk"]
 }
 
 def get_styles_for_department(dept):
@@ -106,7 +106,7 @@ styles_for_dept = get_styles_for_department(department)
 style = st.selectbox(
     "🎨 Choose Style",
     options=styles_for_dept,
-    index=0  # defaults to "None"
+    index=0
 )
 
 raw_prompt = st.text_area("Enter your prompt to generate an image:", height=120)
@@ -115,7 +115,8 @@ num_images = 1
 
 # ---------------- Prompt Templates ----------------
 PROMPT_TEMPLATES = {
-    "Marketing": """You are a senior AI prompt engineer creating polished prompts for marketing and advertising visuals.
+    "Marketing": """
+You are a senior AI prompt engineer creating polished prompts for marketing and advertising visuals.
 
 Your job:
 - Transform the raw input into a compelling, professional, campaign-ready image prompt.
@@ -133,8 +134,11 @@ Rules:
 User’s raw prompt:
 "{USER_PROMPT}"
 
-Refined marketing image prompt:""",
-    "Design": """You are a senior AI prompt engineer supporting a creative design team.
+Refined marketing image prompt:
+""",
+
+    "Design": """
+You are a senior AI prompt engineer supporting a creative design team.
 
 Your job:
 - Expand raw input into a visually inspiring, design-oriented image prompt.
@@ -152,8 +156,11 @@ Rules:
 User’s raw prompt:
 "{USER_PROMPT}"
 
-Refined design image prompt:""",
-    "General": """You are an expert AI prompt engineer specialized in creating vivid and descriptive image prompts.
+Refined design image prompt:
+""",
+
+    "General": """
+You are an expert AI prompt engineer specialized in creating vivid and descriptive image prompts.
 
 Your job:
 - Expand the user’s input into a detailed, clear prompt for an image generation model.
@@ -171,8 +178,11 @@ Rules:
 User’s raw prompt:
 "{USER_PROMPT}"
 
-Refined general image prompt:""",
-    "DPEX": """You are a senior AI prompt engineer creating refined prompts for IT and technology-related visuals.
+Refined general image prompt:
+""",
+
+    "DPEX": """
+You are a senior AI prompt engineer creating refined prompts for IT and technology-related visuals.
 
 Your job:
 - Transform the raw input into a detailed, professional, and technology-focused image prompt.
@@ -192,7 +202,8 @@ Rules:
 User’s raw prompt:
 "{USER_PROMPT}"
 
-Refined DPEX image prompt:"""
+Refined DPEX image prompt:
+"""
 }
 
 # ---------------- Helpers ----------------
@@ -272,7 +283,6 @@ if st.button("🚀 Generate Image"):
                 if not img_bytes:
                     continue
 
-                # Force resize to 2048x2048
                 try:
                     img_bytes = resize_to_2048(img_bytes)
                 except Exception:
@@ -294,6 +304,8 @@ if st.button("🚀 Generate Image"):
 
                     with col:
                         st.image(img_bytes, caption=filename, use_column_width=True)
+
+                        # Download button
                         st.download_button(
                             "⬇️ Download",
                             data=img_bytes,
@@ -301,6 +313,36 @@ if st.button("🚀 Generate Image"):
                             mime="image/png",
                             key=f"dl_{filename}"
                         )
+
+                        # Change prompt and regenerate
+                        with st.expander(f"✏️ Change Prompt & Regenerate ({idx+1})"):
+                            new_prompt = st.text_area(
+                                f"Enter a new prompt for {filename}",
+                                value=raw_prompt,
+                                key=f"new_prompt_{i}_{idx}"
+                            )
+                            if st.button(f"🔄 Regenerate {idx+1}", key=f"regen_{i}_{idx}"):
+                                with st.spinner("Regenerating image..."):
+                                    try:
+                                        refinement_prompt = PROMPT_TEMPLATES[department].replace("{USER_PROMPT}", new_prompt)
+                                        if style != "None":
+                                            refinement_prompt += f"\n\nApply the visual style: {STYLE_DESCRIPTIONS[style]}"
+                                        text_resp = TEXT_MODEL.generate_content(refinement_prompt)
+                                        enhanced_prompt = safe_get_enhanced_text(text_resp).strip()
+
+                                        resp2 = IMAGE_MODEL.generate_images(
+                                            prompt=enhanced_prompt,
+                                            number_of_images=1,
+                                        )
+
+                                        regen_obj = resp2.images[0]
+                                        regen_bytes = get_image_bytes_from_genobj(regen_obj)
+                                        if regen_bytes:
+                                            regen_bytes = resize_to_2048(regen_bytes)
+                                            st.image(regen_bytes, caption=f"Regenerated from: {filename}", use_column_width=True)
+                                    except Exception as e:
+                                        st.error(f"⚠️ Error regenerating: {e}")
+
                     st.session_state.generated_images.append({"filename": filename, "content": img_bytes})
             else:
                 st.error("❌ No images produced by the model.")
@@ -308,7 +350,7 @@ if st.button("🚀 Generate Image"):
 # ---------------- HISTORY ----------------
 if st.session_state.generated_images:
     st.subheader("📂 Past Generated Images")
-    for i, img in enumerate(reversed(st.session_state.generated_images[-20:])):  # last 20
+    for i, img in enumerate(reversed(st.session_state.generated_images[-20:])):
         with st.expander(f"{i+1}. {img['filename']}"):
             st.image(img["content"], caption=img["filename"], use_container_width=True)
             st.download_button(
@@ -318,4 +360,3 @@ if st.session_state.generated_images:
                 mime="image/png",
                 key=f"download_img_{i}"
             )
-
