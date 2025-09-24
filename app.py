@@ -139,7 +139,7 @@ User’s raw prompt:
 
 Refined general image prompt:"""
 
-    "IT": """You are a senior AI prompt engineer creating refined prompts for IT and technology-related visuals.
+    "DPEX": """You are a senior AI prompt engineer creating refined prompts for IT and technology-related visuals.
 
 Your job:
 - Transform the raw input into a detailed, professional, and technology-focused image prompt.
@@ -159,7 +159,7 @@ Rules:
 User’s raw prompt:
 "{USER_PROMPT}"
 
-Refined IT image prompt:"""
+Refined DPEX image prompt:"""
 
 }
 
