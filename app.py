@@ -90,34 +90,26 @@ style = st.selectbox(
     index=0  # defaults to "None"
 )
 
-# ---------------- Mode Selection ----------------
-mode = st.radio(
-    "✨ Generation Mode",
-    ["Text-to-Image", "Image-to-Image"],
-    index=0,
-    horizontal=True
-)
+raw_prompt = st.text_area("✨ Enter your prompt to generate an image:", height=120)
 
-uploaded_image = None
-mask_image = None
-if mode == "Image-to-Image":
-    uploaded_image = st.file_uploader("📤 Upload an image to modify", type=["png", "jpg", "jpeg"])
-    mask_image = st.file_uploader("🎭 (Optional) Upload a mask for inpainting", type=["png"])
-
-    if uploaded_image:
-        col1, col2 = st.columns(2)
-        with col1:
-            st.image(uploaded_image, caption="🖼️ Base Image", use_container_width=True)
-        if mask_image:
-            with col2:
-                st.image(mask_image, caption="🎭 Mask Image", use_container_width=True)
-
-raw_prompt = st.text_area("✨ Enter your prompt:", height=120)
 num_images = st.slider("🧾 Number of images", min_value=1, max_value=4, value=1)
 
 # ---------------- Prompt Templates ----------------
 PROMPT_TEMPLATES = {
     "Marketing": """You are a senior AI prompt engineer creating polished prompts for marketing and advertising visuals.
+
+Your job:
+- Transform the raw input into a compelling, professional, campaign-ready image prompt.
+- Expand with persuasive details about:
+  • Background and setting (modern, lifestyle, commercial, aspirational)
+  • Lighting and atmosphere (studio lights, golden hour, cinematic)
+  • Style (photorealistic, cinematic, product photography, lifestyle branding)
+  • Perspective and composition (wide shot, close-up, dramatic angles)
+  • Mood, tone, and branding suitability (premium, sleek, aspirational)
+
+Rules:
+- Stay faithful to the user’s idea but elevate it for ads, social media, or presentations.
+- Output only the final refined image prompt.
 
 User’s raw prompt:
 "{USER_PROMPT}"
@@ -125,17 +117,58 @@ User’s raw prompt:
 Refined marketing image prompt:""",
     "Design": """You are a senior AI prompt engineer supporting a creative design team.
 
+Your job:
+- Expand raw input into a visually inspiring, design-oriented image prompt.
+- Add imaginative details about:
+  • Artistic styles (minimalist, abstract, futuristic, flat, 3D render, watercolor, digital illustration)
+  • Color schemes, palettes, textures, and patterns
+  • Composition and balance (symmetry, negative space, creative framing)
+  • Lighting and atmosphere (soft glow, vibrant contrast, surreal shading)
+  • Perspective (isometric, top-down, wide shot, close-up)
+
+Rules:
+- Keep fidelity to the idea but make it highly creative and visually unique.
+- Output only the final refined image prompt.
+
 User’s raw prompt:
 "{USER_PROMPT}"
 
 Refined design image prompt:""",
     "General": """You are an expert AI prompt engineer specialized in creating vivid and descriptive image prompts.
 
+Your job:
+- Expand the user’s input into a detailed, clear prompt for an image generation model.
+- Add missing details such as:
+  • Background and setting
+  • Lighting and mood
+  • Style and realism level
+  • Perspective and composition
+
+Rules:
+- Stay true to the user’s intent.
+- Keep language concise, descriptive, and expressive.
+- Output only the final refined image prompt.
+
 User’s raw prompt:
 "{USER_PROMPT}"
 
 Refined general image prompt:""",
     "DPEX": """You are a senior AI prompt engineer creating refined prompts for IT and technology-related visuals.
+
+Your job:
+- Transform the raw input into a detailed, professional, and technology-focused image prompt.
+- Expand with contextual details about:
+  • Technology environments (server rooms, data centers, cloud systems, coding workspaces)
+  • Digital elements (network diagrams, futuristic UIs, holograms, cybersecurity visuals)
+  • People in IT roles (developers, engineers, admins, tech support, collaboration)
+  • Tone (innovative, technical, futuristic, professional)
+  • Composition (screens, servers, code on monitors, abstract digital patterns)
+  • Lighting and effects (LED glow, cyberpunk tones, neon highlights, modern tech ambiance)
+
+Rules:
+- Ensure images are suitable for IT presentations, product demos, training, technical documentation, and digital transformation campaigns.
+- Stay true to the user’s intent but emphasize a technological and innovative look.
+- Output only the final refined image prompt.
 
 User’s raw prompt:
 "{USER_PROMPT}"
@@ -177,8 +210,6 @@ def resize_to_2048(img_bytes):
 if st.button("🚀 Generate Image"):
     if not raw_prompt.strip():
         st.warning("Please enter a prompt!")
-    elif mode == "Image-to-Image" and uploaded_image is None:
-        st.warning("Please upload an image for Image-to-Image mode!")
     else:
         # 1) refine prompt with Gemini
         with st.spinner("Refining prompt with Gemini..."):
@@ -196,25 +227,10 @@ if st.button("🚀 Generate Image"):
         # 2) generate images
         with st.spinner("Generating image(s) with Imagen..."):
             try:
-                if mode == "Image-to-Image" and uploaded_image is not None:
-                    base_img = Image.open(uploaded_image).convert("RGBA")
-                    buf = io.BytesIO()
-                    base_img.save(buf, format="PNG")
-                    buf.seek(0)
-
-                    mask_bytes = mask_image.read() if mask_image else None
-
-                    resp = IMAGE_MODEL.generate_images(
-                        prompt=enhanced_prompt,
-                        number_of_images=num_images,
-                        image=buf.getvalue(),
-                        mask=mask_bytes
-                    )
-                else:
-                    resp = IMAGE_MODEL.generate_images(
-                        prompt=enhanced_prompt,
-                        number_of_images=num_images,
-                    )
+                resp = IMAGE_MODEL.generate_images(
+                    prompt=enhanced_prompt,
+                    number_of_images=num_images,
+                )
             except Exception as e:
                 st.error(f"⚠️ Image generation error: {e}")
                 st.stop()
@@ -237,6 +253,7 @@ if st.button("🚀 Generate Image"):
                 if not img_bytes:
                     continue
 
+                # Force resize to 2048x2048
                 try:
                     img_bytes = resize_to_2048(img_bytes)
                 except Exception:
@@ -249,7 +266,7 @@ if st.button("🚀 Generate Image"):
                 cols = st.columns(len(generated_raws))
                 for idx, img_bytes in enumerate(generated_raws):
                     col = cols[idx]
-                    filename = f"{department.lower()}_{style.lower()}_{mode.lower()}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{idx}_2048.png"
+                    filename = f"{department.lower()}_{style.lower()}_image_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{idx}_2048.png"
                     output_dir = os.path.join(os.path.dirname(__file__), "generated_images")
                     os.makedirs(output_dir, exist_ok=True)
                     filepath = os.path.join(output_dir, filename)
@@ -272,7 +289,7 @@ if st.button("🚀 Generate Image"):
 # ---------------- HISTORY ----------------
 if st.session_state.generated_images:
     st.subheader("📂 Past Generated Images")
-    for i, img in enumerate(reversed(st.session_state.generated_images[-20:])):
+    for i, img in enumerate(reversed(st.session_state.generated_images[-20:])):  # last 20
         with st.expander(f"{i+1}. {img['filename']}"):
             st.image(img["content"], caption=img["filename"], use_container_width=True)
             st.download_button(
@@ -282,3 +299,4 @@ if st.session_state.generated_images:
                 mime="image/png",
                 key=f"download_img_{i}"
             )
+
