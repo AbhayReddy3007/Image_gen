@@ -66,7 +66,24 @@ STYLE_DESCRIPTIONS = {
     "Vibrant": "Bold, saturated colors. High contrast, energetic mood, eye-catching and lively presentation.",
     "Sketch - Black & White": "Hand-drawn monochrome sketch with pencil or ink. Strong lines, shading for depth, artistic rawness.",
     "Pop Art": "Comic-book and pop-art inspired. Bold outlines, halftone patterns, flat vivid colors, high contrast, playful tone.",
-    "Vector": "Flat vector graphics. Smooth shapes, sharp edges, solid fills, and clean scalable style like logos or icons."
+    "Vector": "Flat vector graphics. Smooth shapes, sharp edges, solid fills, and clean scalable style like logos or icons.",
+    "Watercolor": "Soft, fluid strokes with delicate blending and washed-out textures. Artistic and dreamy.",
+    "Cyberpunk": "Futuristic neon city vibes. High contrast, glowing lights, dark tones, sci-fi feel.",
+    "Anime": "Japanese animation style with vibrant colors, clean outlines, expressive features, and stylized proportions.",
+    "Pixel Art": "Retro digital art style. Small, pixel-based visuals resembling old-school video games.",
+    "Isometric": "3D look with isometric perspective. Often used for architecture, games, and diagrams.",
+    "Oil Painting": "Rich, textured brushstrokes. Classic fine art look with deep color blending.",
+    "Fantasy Art": "Epic fantasy scenes. Magical elements, mythical creatures, enchanted landscapes.",
+    "Steampunk": "Retro-futuristic style with gears, brass, Victorian aesthetics, and industrial design.",
+    "Surreal": "Dreamlike, bizarre imagery. Juxtaposes unexpected elements, bending reality.",
+    "Line Art": "Minimal monochrome outlines with clean, bold strokes. No shading, focus on form.",
+    "Cartoon": "Playful, exaggerated features, simplified shapes, bold outlines, and bright colors.",
+    "Charcoal": "Rough, sketchy textures with dark black shading. Artistic, raw, dramatic effect.",
+    "Low Poly": "Simplified 3D style using flat geometric shapes and polygons.",
+    "Concept Art": "Imaginative, detailed artwork for games or films. Often moody and cinematic.",
+    "Neon Glow": "Bright neon outlines and glowing highlights. Futuristic, nightlife aesthetic.",
+    "Vintage": "Old-school, retro tones. Faded colors, film grain, sepia, or retro print feel.",
+    "Graffiti": "Urban street art style with bold colors, spray paint textures, and rebellious tone."
 }
 
 # ---------------- Department-aware Style Suggestions ----------------
