@@ -109,9 +109,9 @@ style = st.selectbox(
     index=0  # defaults to "None"
 )
 
-raw_prompt = st.text_area("✨ Enter your prompt to generate an image:", height=120)
+raw_prompt = st.text_area("Enter your prompt to generate an image:", height=120)
 
-num_images = st.slider("🧾 Number of images", min_value=1, max_value=4, value=1)
+num_images = 1
 
 # ---------------- Prompt Templates ----------------
 PROMPT_TEMPLATES = {
