@@ -1,4 +1,5 @@
 import os
+import re
 import datetime
 import json
 import io
@@ -38,6 +39,9 @@ st.title("🖼️ AI Image Generator")
 # ---------------- STATE ----------------
 if "generated_images" not in st.session_state:
     st.session_state.generated_images = []
+if "regenerated" not in st.session_state:
+    st.session_state.regenerated = {}  # mapping safe_key -> list of {"filename","content"}
+# regen_error_<safe_key> and regen_done_<safe_key> will be set dynamically as needed
 
 # ---------------- UI ----------------
 department = st.selectbox(
@@ -206,6 +210,7 @@ Refined DPEX image prompt:
 """
 }
 
+
 # ---------------- Helpers ----------------
 def safe_get_enhanced_text(resp):
     if hasattr(resp, "text") and resp.text:
@@ -235,6 +240,77 @@ def resize_to_2048(img_bytes):
     out = io.BytesIO()
     resized.save(out, format="PNG")
     return out.getvalue()
+
+def _sanitize_key(s: str):
+    # make a safe key for session_state from filename or label
+    return re.sub(r'[^0-9a-zA-Z_-]+', '_', s)
+
+# ---------------- Regeneration callback ----------------
+def regenerate_callback(safe_key, dept, style, new_prompt_key):
+    """
+    This callback runs when a regeneration button is clicked.
+    It performs Gemini refinement + Imagen generation and stores results in session_state.
+    """
+    try:
+        new_prompt = st.session_state.get(new_prompt_key, "")
+        if not new_prompt or not new_prompt.strip():
+            st.session_state[f"regen_error_{safe_key}"] = "Prompt is empty."
+            return
+
+        # 1) refine prompt with Gemini
+        refinement_prompt = PROMPT_TEMPLATES[dept].replace("{USER_PROMPT}", new_prompt)
+        if style != "None":
+            refinement_prompt += f"\n\nApply the visual style: {STYLE_DESCRIPTIONS[style]}"
+
+        text_resp = TEXT_MODEL.generate_content(refinement_prompt)
+        enhanced_prompt = safe_get_enhanced_text(text_resp).strip()
+
+        # 2) call Imagen
+        resp = IMAGE_MODEL.generate_images(prompt=enhanced_prompt, number_of_images=1)
+
+        # robustly extract image object
+        gen_obj = None
+        try:
+            gen_obj = resp.images[0]
+        except Exception:
+            try:
+                gen_obj = resp[0]
+            except Exception:
+                gen_obj = None
+
+        if not gen_obj:
+            st.session_state[f"regen_error_{safe_key}"] = "Model response contained no image."
+            return
+
+        img_bytes = get_image_bytes_from_genobj(gen_obj)
+        if not img_bytes:
+            st.session_state[f"regen_error_{safe_key}"] = "Failed to extract image bytes from model response."
+            return
+
+        try:
+            img_bytes = resize_to_2048(img_bytes)
+        except Exception:
+            pass
+
+        # save generated file
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        regen_fname = f"{safe_key}_regenerated_{timestamp}.png"
+        output_dir = os.path.join(os.path.dirname(__file__), "generated_images")
+        os.makedirs(output_dir, exist_ok=True)
+        filepath = os.path.join(output_dir, regen_fname)
+        with open(filepath, "wb") as f:
+            f.write(img_bytes)
+
+        # store in session_state so UI can show it after rerun
+        st.session_state.generated_images.append({"filename": regen_fname, "content": img_bytes})
+        st.session_state.regenerated.setdefault(safe_key, []).append({"filename": regen_fname, "content": img_bytes})
+
+        # clear previous error and mark done
+        st.session_state.pop(f"regen_error_{safe_key}", None)
+        st.session_state[f"regen_done_{safe_key}"] = True
+
+    except Exception as e:
+        st.session_state[f"regen_error_{safe_key}"] = str(e)
 
 # ---------------- Generation flow ----------------
 if st.button("🚀 Generate Image"):
@@ -296,6 +372,8 @@ if st.button("🚀 Generate Image"):
                 for idx, img_bytes in enumerate(generated_raws):
                     col = cols[idx]
                     filename = f"{department.lower()}_{style.lower()}_image_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{idx}_2048.png"
+                    safe_key = _sanitize_key(filename)
+
                     output_dir = os.path.join(os.path.dirname(__file__), "generated_images")
                     os.makedirs(output_dir, exist_ok=True)
                     filepath = os.path.join(output_dir, filename)
@@ -311,38 +389,40 @@ if st.button("🚀 Generate Image"):
                             data=img_bytes,
                             file_name=filename,
                             mime="image/png",
-                            key=f"dl_{filename}"
+                            key=f"dl_{safe_key}"
                         )
 
-                        # Change prompt and regenerate
+                        # Prepare default new_prompt session key so the callback can read it
+                        new_prompt_key = f"new_prompt_{safe_key}"
+                        if new_prompt_key not in st.session_state:
+                            st.session_state[new_prompt_key] = raw_prompt
+
+                        # Change prompt and regenerate (uses callback)
                         with st.expander(f"✏️ Change Prompt & Regenerate ({idx+1})"):
-                            new_prompt = st.text_area(
+                            st.text_area(
                                 f"Enter a new prompt for {filename}",
-                                value=raw_prompt,
-                                key=f"new_prompt_{i}_{idx}"
+                                key=new_prompt_key,
+                                height=120
                             )
-                            if st.button(f"🔄 Regenerate {idx+1}", key=f"regen_{i}_{idx}"):
-                                with st.spinner("Regenerating image..."):
-                                    try:
-                                        refinement_prompt = PROMPT_TEMPLATES[department].replace("{USER_PROMPT}", new_prompt)
-                                        if style != "None":
-                                            refinement_prompt += f"\n\nApply the visual style: {STYLE_DESCRIPTIONS[style]}"
-                                        text_resp = TEXT_MODEL.generate_content(refinement_prompt)
-                                        enhanced_prompt = safe_get_enhanced_text(text_resp).strip()
+                            st.button(
+                                f"🔄 Regenerate {idx+1}",
+                                key=f"regen_btn_{safe_key}",
+                                on_click=regenerate_callback,
+                                args=(safe_key, department, style, new_prompt_key)
+                            )
 
-                                        resp2 = IMAGE_MODEL.generate_images(
-                                            prompt=enhanced_prompt,
-                                            number_of_images=1,
-                                        )
+                        # Show regeneration errors if any
+                        if st.session_state.get(f"regen_error_{safe_key}"):
+                            st.error(st.session_state.get(f"regen_error_{safe_key}"))
 
-                                        regen_obj = resp2.images[0]
-                                        regen_bytes = get_image_bytes_from_genobj(regen_obj)
-                                        if regen_bytes:
-                                            regen_bytes = resize_to_2048(regen_bytes)
-                                            st.image(regen_bytes, caption=f"Regenerated from: {filename}", use_column_width=True)
-                                    except Exception as e:
-                                        st.error(f"⚠️ Error regenerating: {e}")
+                        # Show regenerated images (if any)
+                        regenerated_list = st.session_state.regenerated.get(safe_key, [])
+                        if regenerated_list:
+                            st.markdown("**Regenerated versions:**")
+                            for r in regenerated_list:
+                                st.image(r["content"], caption=f"Regenerated: {r['filename']}", use_column_width=True)
 
+                    # persist the original into history
                     st.session_state.generated_images.append({"filename": filename, "content": img_bytes})
             else:
                 st.error("❌ No images produced by the model.")
@@ -350,7 +430,7 @@ if st.button("🚀 Generate Image"):
 # ---------------- HISTORY ----------------
 if st.session_state.generated_images:
     st.subheader("📂 Past Generated Images")
-    for i, img in enumerate(reversed(st.session_state.generated_images[-20:])):
+    for i, img in enumerate(reversed(st.session_state.generated_images[-40:])):  # last 40
         with st.expander(f"{i+1}. {img['filename']}"):
             st.image(img["content"], caption=img["filename"], use_container_width=True)
             st.download_button(
