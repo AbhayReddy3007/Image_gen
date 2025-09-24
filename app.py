@@ -1,4 +1,4 @@
-# app.py (Streamlit + Vertex AI, Gemini refinement by Department + Style, fixed 2048x2048 resolution)
+
 import os
 import datetime
 import json
