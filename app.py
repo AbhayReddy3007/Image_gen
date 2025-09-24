@@ -65,7 +65,6 @@ STYLE_DESCRIPTIONS = {
     "Pop Art": "Comic-book and pop-art inspired. Bold outlines, halftone patterns, flat vivid colors, high contrast, playful tone.",
     "Vector": "Flat vector graphics. Smooth shapes, sharp edges, solid fills, and clean scalable style like logos or icons.",
 
-    # 🎨 Artistic
     "Watercolor": "Soft, fluid strokes with delicate blending and washed-out textures. Artistic and dreamy.",
     "Oil Painting": "Rich, textured brushstrokes. Classic fine art look with deep color blending.",
     "Charcoal": "Rough, sketchy textures with dark shading. Artistic, raw, dramatic effect.",
