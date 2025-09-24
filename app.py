@@ -43,8 +43,8 @@ if "generated_images" not in st.session_state:
 # ---------------- UI ----------------
 department = st.selectbox(
     "🏢 Select Department",
-    options=["Marketing", "Design", "General"],
-    index=2  # ✅ General is default
+    options=["Marketing", "Design", "General", "DPEX"],
+    index=2
 )
 
 STYLE_DESCRIPTIONS = {
