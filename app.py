@@ -137,7 +137,7 @@ Rules:
 User’s raw prompt:
 "{USER_PROMPT}"
 
-Refined general image prompt:"""
+Refined general image prompt:""",
 
     "DPEX": """You are a senior AI prompt engineer creating refined prompts for IT and technology-related visuals.
 
