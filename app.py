@@ -46,7 +46,7 @@ if "regenerated" not in st.session_state:
 # ---------------- UI ----------------
 department = st.selectbox(
     "🏢 Select Department",
-    options=["Marketing", "Design", "General", "DPEX"],
+    options=["Marketing", "Design", "General", "DPEX", "HR", "Business"],
     index=2
 )
 
