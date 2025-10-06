@@ -46,7 +46,7 @@ if "regenerated" not in st.session_state:
 # ---------------- UI ----------------
 department = st.selectbox(
     "🏢 Select Department",
-    options=["Marketing", "Design", "General", "DPEX", "HR", "Business"],
+    options=["Marketing", "Design", "General", "DPEX", "HR", "Business", "None"],
     index=2
 )
 
@@ -179,6 +179,13 @@ Rules:
 - Keep language concise, descriptive, and expressive.
 - Output only the final refined image prompt.
 
+User’s raw prompt:
+"{USER_PROMPT}"
+
+Refined general image prompt:
+""",
+    "None": """
+Dont make any changes in the user's prompt.Follow it as it is
 User’s raw prompt:
 "{USER_PROMPT}"
 
